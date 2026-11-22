@@ -1,0 +1,13 @@
+target/
+Cargo.lock
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+node_modules/
+*.o
+*.a
+*.so
+*.dylib

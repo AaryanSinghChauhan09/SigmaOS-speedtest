@@ -138,3 +138,86 @@ pub fn ping_stats(
     let avg = times.iter().sum::<f64>() / times.len().max(1) as f64;
     Ok((min, avg, max))
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::io::Write as _;
+    use std::net::TcpListener;
+    use std::thread;
+
+    /// Bind an ephemeral loopback port and return it plus a listener
+    /// handle the caller can `accept` on in a thread.
+    fn loopback() -> (u16, TcpListener) {
+        let l = TcpListener::bind("127.0.0.1:0").unwrap();
+        let port = l.local_addr().unwrap().port();
+        (port, l)
+    }
+
+    #[test]
+    fn ping_local_listener() {
+        let (port, l) = loopback();
+        thread::spawn(move || {
+            let _ = l.accept();
+        });
+        let r = ping("127.0.0.1", port, Duration::from_secs(2)).unwrap();
+        assert!(r.ok);
+        assert_eq!(r.port, port);
+        assert!(r.latency_ms >= 0.0);
+    }
+
+    #[test]
+    fn ping_refused_is_error() {
+        // Bind then drop to get a port nothing listens on.
+        let port = TcpListener::bind("127.0.0.1:0")
+            .unwrap()
+            .local_addr()
+            .unwrap()
+            .port();
+        assert!(ping("127.0.0.1", port, Duration::from_millis(500)).is_err());
+    }
+
+    #[test]
+    fn ping_stats_orders_min_avg_max() {
+        let (port, l) = loopback();
+        thread::spawn(move || {
+            for _ in 0..4 {
+                let _ = l.accept();
+            }
+        });
+        let (min, avg, max) = ping_stats("127.0.0.1", port, 4, Duration::from_secs(2)).unwrap();
+        assert!(min <= avg && avg <= max);
+        assert!(min >= 0.0);
+    }
+
+    #[test]
+    fn download_counts_bytes_and_mbps() {
+        let (port, l) = loopback();
+        thread::spawn(move || {
+            let (mut s, _) = l.accept().unwrap();
+            let mut buf = [0u8; 64];
+            let _ = s.read(&mut buf);
+            let payload = vec![0xABu8; 100_000];
+            s.write_all(&payload).unwrap();
+        });
+        let r = download(
+            "127.0.0.1",
+            port,
+            b"GET / HTTP/1.0\r\n\r\n",
+            50_000,
+            Duration::from_secs(2),
+        )
+        .unwrap();
+        assert_eq!(r.bytes_downloaded, 50_000);
+        assert!(r.duration_ms > 0 || r.mbps > 0.0);
+        assert!(r.mbps > 0.0);
+    }
+
+    #[test]
+    fn invalid_addr_is_typed_error() {
+        assert!(matches!(
+            ping("256.256.256.256", 80, Duration::from_millis(100)),
+            Err(SpeedtestError::InvalidAddr(_)) | Err(SpeedtestError::NoAddr(_))
+        ));
+    }
+}

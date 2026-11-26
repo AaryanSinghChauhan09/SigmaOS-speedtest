@@ -98,8 +98,12 @@ pub fn download(
         match stream.read(&mut buf[..want]) {
             Ok(0) => break,
             Ok(n) => total += n as u64,
-            Err(e) if e.kind() == std::io::ErrorKind::WouldBlock
-                || e.kind() == std::io::ErrorKind::TimedOut => break,
+            Err(e)
+                if e.kind() == std::io::ErrorKind::WouldBlock
+                    || e.kind() == std::io::ErrorKind::TimedOut =>
+            {
+                break
+            }
             Err(e) => return Err(SpeedtestError::Io(e)),
         }
     }

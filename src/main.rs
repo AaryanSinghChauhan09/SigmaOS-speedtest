@@ -40,7 +40,12 @@ enum Commands {
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     env_logger::init();
     match Cli::parse().command {
-        Commands::Ping { host, port, count, timeout_ms } => {
+        Commands::Ping {
+            host,
+            port,
+            count,
+            timeout_ms,
+        } => {
             let timeout = Duration::from_millis(timeout_ms);
             if count <= 1 {
                 let r = ping(&host, port, timeout)?;
@@ -53,10 +58,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 );
             }
         }
-        Commands::Download { host, port, max_bytes, timeout_ms } => {
-            let req = format!(
-                "GET / HTTP/1.1\r\nHost: {host}\r\nConnection: close\r\n\r\n"
-            );
+        Commands::Download {
+            host,
+            port,
+            max_bytes,
+            timeout_ms,
+        } => {
+            let req = format!("GET / HTTP/1.1\r\nHost: {host}\r\nConnection: close\r\n\r\n");
             let r = download(
                 &host,
                 port,

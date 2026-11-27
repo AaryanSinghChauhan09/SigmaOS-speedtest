@@ -1,7 +1,7 @@
 # SigmaOS-speedtest
 
 SigmaOS component inspired by the corresponding SigmaOS repository.
-See `docs/OMARCHY_INSPIRATION.md` in the main SigmaOS repository.
+See `docs/ARCHITECTURE.md` in the main SigmaOS repository.
 
 ## Structure
 
